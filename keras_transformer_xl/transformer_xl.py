@@ -1,3 +1,5 @@
+# update 1: remove adaptive embedding and adaptive softmax layers.
+
 import numpy as np
 from .backend import keras
 from keras_adaptive_softmax import AdaptiveEmbedding, AdaptiveSoftmax
@@ -39,7 +41,7 @@ def set_custom_objects():
 def build_transformer_xl(units,
                          embed_dim,
                          hidden_dim,
-                         num_token,
+                         output_dim,
                          num_block,
                          num_head,
                          batch_size,
@@ -76,24 +78,26 @@ def build_transformer_xl(units,
     :param share_biases: Whether to use the same biases for all layers.
     :return: The built model.
     """
-    token_input = keras.layers.Input(shape=(target_len,), name='Input-Token')
+    token_input = keras.layers.Input(shape=(batch_size,target_len,), name='Input-Token')
     memory_length_input = keras.layers.Input(shape=(1,), name='Input-Memory-Length')
     inputs = [token_input, memory_length_input]
+    results = keras.layers.Dense(units=units, activation=None)(token_input)
+    token_embed = results
 
-    results = AdaptiveEmbedding(
-        input_dim=num_token,
-        output_dim=units,
-        embed_dim=embed_dim,
-        cutoffs=cutoffs,
-        div_val=div_val,
-        mask_zero=True,
-        force_projection=force_projection,
-        return_embeddings=True,
-        return_projections=True,
-        name='Embed-Token',
-    )(token_input)
-    token_embed, embedding_weights = results[0], results[1:]
-    token_embed = Scale(scale=np.sqrt(units), name='Embed-Token-Scaled')(token_embed)
+    # results = AdaptiveEmbedding(
+    #     input_dim=num_token,
+    #     output_dim=units,
+    #     embed_dim=embed_dim,
+    #     cutoffs=cutoffs,
+    #     div_val=div_val,
+    #     mask_zero=True,
+    #     force_projection=force_projection,
+    #     return_embeddings=True,
+    #     return_projections=True,
+    #     name='Embed-Token',
+    # )(token_input)
+    # token_embed = Scale(scale=np.sqrt(units), name='Embed-Token-Scaled')(token_embed)
+
     last_memory = Memory(
         batch_size=batch_size,
         memory_len=memory_len,
@@ -117,6 +121,7 @@ def build_transformer_xl(units,
         context_bias, relative_bias = RelativeBias(units=units, name='Biases')(last_memory)
 
     outputs = [token_embed]
+    attention_output = []
     for i in range(num_block):
         block_input, block_output = outputs[-1], outputs[-1]
         if not share_biases:
@@ -154,18 +159,20 @@ def build_transformer_xl(units,
             )([block_output, memory_length_input])
 
         outputs.append(block_output)
+        attention_output = block_output
 
-    softmax = AdaptiveSoftmax(
-        input_dim=units,
-        output_dim=num_token,
-        embed_dim=embed_dim,
-        cutoffs=cutoffs,
-        div_val=div_val,
-        force_projection=force_projection,
-        bind_embeddings=bind_embeddings,
-        bind_projections=bind_projections,
-        name='Softmax',
-    )(outputs[-1:] + embedding_weights)
-
-    model = keras.models.Model(inputs=inputs, outputs=softmax)
+    # softmax = AdaptiveSoftmax(
+    #     input_dim=units,
+    #     output_dim=num_token,
+    #     embed_dim=embed_dim,
+    #     cutoffs=cutoffs,
+    #     div_val=div_val,
+    #     force_projection=force_projection,
+    #     bind_embeddings=bind_embeddings,
+    #     bind_projections=bind_projections,
+    #     name='Softmax',
+    # )(outputs[-1:] + embedding_weights)
+    output_result = keras.layers.Dense(units=output_dim, activation=None)(attention_output)
+    model = keras.models.Model(inputs=inputs, outputs=output_result)
+    print(model.summary())
     return model

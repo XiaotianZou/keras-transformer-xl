@@ -5,6 +5,21 @@ import numpy as np
 from keras_transformer_xl.backend import keras
 from keras_transformer_xl import build_transformer_xl, set_custom_objects
 
+model = build_transformer_xl(
+            units=6,
+            embed_dim=16,
+            hidden_dim=12,
+            output_dim=13,
+            num_block=3,
+            num_head=2,
+            batch_size=3,
+            memory_len=15,
+            target_len=5,
+            dropout=0.1,
+            attention_dropout=0.1,
+            cutoffs=[3],
+            div_val=2,
+        )
 
 class TestTransformerXL(TestCase):
 
@@ -13,7 +28,7 @@ class TestTransformerXL(TestCase):
             units=6,
             embed_dim=16,
             hidden_dim=12,
-            num_token=13,
+            output_dim=13,
             num_block=3,
             num_head=2,
             batch_size=3,
