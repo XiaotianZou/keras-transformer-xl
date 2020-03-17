@@ -10,6 +10,8 @@ from .memory import Memory
 from .pos_embed import PositionalEmbedding
 from .rel_bias import RelativeBias
 from .rel_multi_head import RelativePartialMultiHeadSelfAttention
+from keras import backend as K
+
 
 
 __all__ = [
@@ -172,6 +174,14 @@ def build_transformer_xl(units,
     #     bind_projections=bind_projections,
     #     name='Softmax',
     # )(outputs[-1:] + embedding_weights)
+
+    # attention_output = K.constant(np.array(attention_output))
+    # output_result = keras.layers.Dense(units=output_dim, activation=None)()
+    # model = keras.models.Model(inputs=inputs, outputs=output_result)
+    # print(model.summary())
+    # return model
+    print('hello!')
+    print(attention_output.shape.as_list())
     output_result = keras.layers.Dense(units=output_dim, activation=None)(attention_output)
     model = keras.models.Model(inputs=inputs, outputs=output_result)
     print(model.summary())
